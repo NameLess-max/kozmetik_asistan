@@ -1,0 +1,37 @@
+name: kozmetik_asistan
+description: "Kişiselleştirilmiş Akıllı Kozmetik ve Sağlık Asistanı."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: '^3.11.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # İkon kütüphanesi
+  cupertino_icons: ^1.0.8
+
+  # HTTP istekleri ve API bağlantıları için (Backend ile haberleşme)
+  dio: ^5.7.0
+
+  # Uygulama içi durum yönetimi (Veri paylaşımı)
+  provider: ^6.1.2
+
+  # Yerel veritabanı / Küçük verileri cihazda saklama
+  shared_preferences: ^2.3.5
+
+  # Google yazı tiplerini kullanmak için
+  google_fonts: ^6.2.1
+
+  camera: ^0.11.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
