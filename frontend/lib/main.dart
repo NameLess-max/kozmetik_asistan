@@ -3,6 +3,7 @@ import 'theme.dart'; // Tema dosyamızı içeri aktarıyoruz
 import 'package:camera/camera.dart'; // Kamerayı dahil ettik
 import 'screens/onboarding_screen.dart'; // İlk açılacak ekranımızı içeri aktarıyoruz
 import 'screens/home_screen.dart';
+import 'screens/login_screen.dart';
 
 // Sistemdeki kameraları tutacak global değişken
 late List<CameraDescription> cameras;

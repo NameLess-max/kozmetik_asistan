@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
-import 'dart:io'; // Dosya işlemleri için
+import 'dart:io';
 import '../main.dart';
 import '../theme.dart';
+ import 'result_screen.dart';
 
 class CameraScreen extends StatefulWidget {
   const CameraScreen({Key? key}) : super(key: key);
@@ -11,17 +12,24 @@ class CameraScreen extends StatefulWidget {
   State<CameraScreen> createState() => _CameraScreenState();
 }
 
-class _CameraScreenState extends State<CameraScreen> {
+// Animasyonları kullanabilmek için "SingleTickerProviderStateMixin" ekliyoruz
+class _CameraScreenState extends State<CameraScreen> with SingleTickerProviderStateMixin {
   late CameraController _controller;
   bool _isCameraInitialized = false;
-  bool _isProcessing = false; // OCR işlemi sırasında ekranı dondurmak için
+  bool _isProcessing = false;
+
+  // Lazer Tarama Animasyonu İçin Kontrolcüler
+  late AnimationController _scanController;
+  late Animation<double> _scanAnimation;
 
   @override
   void initState() {
     super.initState();
+
+    // 1. Kamera Kurulumu
     _controller = CameraController(
       cameras[0],
-      ResolutionPreset.high, // Yüksek çözünürlük OCR'ın yazıları okuyabilmesi için şart
+      ResolutionPreset.high,
       enableAudio: false,
     );
 
@@ -33,31 +41,40 @@ class _CameraScreenState extends State<CameraScreen> {
     }).catchError((e) {
       debugPrint("Kamera Hatası: $e");
     });
+
+    // 2. Tarama Lazer Animasyonu Kurulumu
+    _scanController = AnimationController(
+      duration: const Duration(seconds: 2), // Lazerin bir tur inip çıkma süresi
+      vsync: this,
+    );
+
+    _scanAnimation = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(parent: _scanController, curve: Curves.easeInOut),
+    );
   }
 
   @override
   void dispose() {
     _controller.dispose();
+    _scanController.dispose(); // Bellek sızıntısını önlemek için animasyonu da kapatıyoruz
     super.dispose();
   }
 
-  // --- OCR İÇİN FOTOĞRAF ÇEKME VE HAZIRLIK ALTYAPISI ---
   Future<void> _captureAndSendToOCR() async {
-    // Eğer kamera hazır değilse veya zaten bir işlem yapılıyorsa butonu kilitle
     if (!_controller.value.isInitialized || _isProcessing) {
       return;
     }
 
     setState(() {
-      _isProcessing = true; // Yükleniyor animasyonunu başlat
+      _isProcessing = true;
+      _scanController.repeat(reverse: true); // Lazer animasyonunu başlat (Aşağı-Yukarı)
     });
 
     try {
-      // 1. Fotoğrafı Çek
       final XFile imageFile = await _controller.takePicture();
       debugPrint("Fotoğraf başarıyla çekildi: ${imageFile.path}");
 
-      // 2. Backend'e (Python FastAPI) Gönderme Simülasyonu
+      // Backend'e Gönderme Simülasyonu
       await _processImageWithDio(imageFile.path);
 
     } catch (e) {
@@ -66,47 +83,45 @@ class _CameraScreenState extends State<CameraScreen> {
         const SnackBar(content: Text('Fotoğraf çekilemedi, lütfen tekrar deneyin.')),
       );
     } finally {
-      setState(() {
-        _isProcessing = false; // İşlem bitince ekranı normale döndür
-      });
+      if (mounted) {
+        setState(() {
+          _isProcessing = false;
+          _scanController.stop(); // İşlem bitince lazeri durdur
+        });
+      }
     }
   }
 
-  // Backend API bağlandığında çalışacak olan asıl fonksiyon
   Future<void> _processImageWithDio(String filePath) async {
-    // Burada 2 saniyelik sahte bir bekleme (API isteği gidip geliyormuş gibi) yapıyoruz
-    await Future.delayed(const Duration(seconds: 2));
-
-    /* TODO: Backend hazır olduğunda buradaki yorum satırlarını kaldırıp kodu aktifleştireceğiz
-    try {
-      var formData = FormData.fromMap({
-        'file': await MultipartFile.fromFile(filePath, filename: 'etiket.jpg'),
-      });
-
-      var response = await dio.post('http://SENIN_IP_ADRESIN:8000/analiz/ocr', data: formData);
-
-      if(response.statusCode == 200) {
-        // Gelen veriyi (örneğin Gemini AI'ın bulduğu riskleri) yeni sayfaya gönder
-      }
-    } catch (e) {
-      print("API Hatası: $e");
-    }
-    */
+    // API bekleme simülasyonu (Lazerin tarama süresi)
+    await Future.delayed(const Duration(seconds: 3));
 
     if (mounted) {
-      // Başarılı olduğunu göstermek için kullanıcıya bildirim ver
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Etiket başarıyla okundu! Sonuçlar getiriliyor...'),
-          backgroundColor: AppTheme.secondaryGreen,
+      // Navigator.pushReplacement kullanıyoruz çünkü kullanıcı
+      // sonuç ekranından "geri" tuşuna basarsa tekrar kameraya değil ana sayfaya dönsün.
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const ResultScreen(
+            // Şimdilik OCR'dan geliyormuş gibi sahte (mock) veri veriyoruz
+            productName: "Taranan Kozmetik Ürünü",
+            score: 45,
+            riskLevel: "Yüksek",
+            safeIngredients: ['Su', 'Gliserin'],
+            riskyIngredients: ['Paraben', 'Sülfat', 'Yapay Renklendirici'],
+            alternativeSuggestion: "Bu ürün sentetik koruyucular içeriyor. Hassas bir cildiniz (Karma) olduğu için %100 doğal içerikli, aloe vera bazlı ürünler tercih etmeniz önerilir.",
+          ),
         ),
       );
-      // Not: Normalde burada Navigator.push ile sonuç ekranına (Kıyaslama/Risk) geçeceğiz.
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    // Vizörün (Çerçevenin) boyutları
+    final double viewfinderWidth = MediaQuery.of(context).size.width * 0.8;
+    const double viewfinderHeight = 250.0;
+
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
@@ -134,31 +149,74 @@ class _CameraScreenState extends State<CameraScreen> {
             ),
           ),
 
-          // 3. Katman: Kılavuz Çizgiler (Vizör)
+          // 3. Katman: YENİ AKILLI VİZÖR (Tarama Çerçevesi)
           Center(
             child: Container(
-              width: MediaQuery.of(context).size.width * 0.8,
-              height: 200,
+              width: viewfinderWidth,
+              height: viewfinderHeight,
               decoration: BoxDecoration(
-                border: Border.all(color: _isProcessing ? AppTheme.warningOrange : AppTheme.secondaryGreen, width: 3),
-                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                    color: _isProcessing ? AppTheme.secondaryGreen : Colors.white70,
+                    width: _isProcessing ? 3 : 2
+                ),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Stack(
+                  children: [
+                    // Sadece işlem sırasında çalışan Lazer Çizgisi Animasyonu
+                    if (_isProcessing)
+                      AnimatedBuilder(
+                        animation: _scanAnimation,
+                        builder: (context, child) {
+                          // Lazerin yukarıdan aşağı inme pozisyonu
+                          return Positioned(
+                            top: _scanAnimation.value * (viewfinderHeight - 4),
+                            left: 0,
+                            right: 0,
+                            child: Container(
+                              height: 4, // Lazerin kalınlığı
+                              decoration: BoxDecoration(
+                                color: AppTheme.secondaryGreen,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppTheme.secondaryGreen.withOpacity(0.8),
+                                    blurRadius: 15,
+                                    spreadRadius: 3, // Etrafa yayılan parlak yeşil ışık efekti
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                  ],
+                ),
               ),
             ),
           ),
 
-          // 4. Katman: İşlem Sırasında Çıkan Yükleniyor Ekranı
+          // 4. Katman: İşlem Sırasında Çıkan Yükleniyor Ekranı (Daha Akıllı Hissiyat)
           if (_isProcessing)
             Container(
-              color: Colors.black.withOpacity(0.5), // Ekranı hafif karartır
+              color: Colors.black.withOpacity(0.4),
               child: const Center(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    SizedBox(height: 320), // Vizörün hemen altına yerleştirmek için
                     CircularProgressIndicator(color: AppTheme.secondaryGreen),
                     SizedBox(height: 16),
                     Text(
-                      "Etiket taranıyor, lütfen bekleyin...",
-                      style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                      "İçerik ve Sertifikalar Analiz Ediliyor...", // Logo tanıdığını hissettiren metin
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1.2,
+                          shadows: [Shadow(color: Colors.black, blurRadius: 4)]
+                      ),
                     )
                   ],
                 ),
@@ -175,7 +233,7 @@ class _CameraScreenState extends State<CameraScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const Text(
-                    "Ürün etiketini çerçevenin içine hizalayın",
+                    "Ürün etiketini veya sertifika logolarını hizalayın",
                     style: TextStyle(color: Colors.white70, fontSize: 14),
                   ),
                   const SizedBox(height: 20),
@@ -190,7 +248,7 @@ class _CameraScreenState extends State<CameraScreen> {
 
                       // DEKLANŞÖR BUTONU
                       GestureDetector(
-                        onTap: _captureAndSendToOCR, // Yazdığımız fonksiyonu bağladık
+                        onTap: _captureAndSendToOCR,
                         child: Container(
                           height: 70,
                           width: 70,

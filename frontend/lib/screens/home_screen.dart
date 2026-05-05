@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../theme.dart';
-import 'camera_screen.dart'; // Bu satırı ekle
+import 'camera_screen.dart';
+import 'profile_screen.dart';
+import 'result_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -8,23 +10,46 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Hoş Geldin! 👋'),
+        backgroundColor: Colors.white,
+        elevation: 0,
+
+        // --- LOGOYU BÜYÜTMEK İÇİN YAPILAN AYARLAR ---
+        leadingWidth: 100, // Sol köşenin genişliğini 56'dan 80'e çıkardık
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 15.0),
+          child: Image.asset(
+            'assets/images/bka_logo.png',
+            fit: BoxFit.contain,
+          ),
+        ),
+        // ---------------------------------------------
+
+        title: const Text(
+          'Bakım Analizatörü',
+          style: TextStyle(
+            color: AppTheme.primaryNavy,
+            fontWeight: FontWeight.bold,
+            fontSize: 22,
+          ),
+        ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.person_outline),
+            icon: const Icon(Icons.person_outline, color: AppTheme.primaryNavy, size: 28),
             onPressed: () {
-              // Profil sayfasına gidiş
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const ProfileScreen()),
+              );
             },
           ),
+          const SizedBox(width: 8),
         ],
       ),
 
-      // Merkezi Tarama Butonu (CTA)[cite: 1]
-      // Ekranın alt ortasında, kamerayı açacak belirgin buton[cite: 1]
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
-          // Sayfa geçiş kodu
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => const CameraScreen()),
@@ -46,22 +71,18 @@ class HomeScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Eğitici İçerik Kartı[cite: 1]
               _buildEducationalCard(context),
 
               const SizedBox(height: 30),
 
-              // Son Analizler Başlığı[cite: 1]
               Text(
                 'Son Analizler',
-                style: Theme.of(context).textTheme.displayLarge?.copyWith(fontSize: 22),
+                style: Theme.of(context).textTheme.displayLarge?.copyWith(fontSize: 22, color: AppTheme.primaryNavy),
               ),
               const SizedBox(height: 15),
 
-              // Son 3 taratılan ürünün listesi[cite: 1]
               _buildRecentScansList(),
 
-              // Altta butonun üstüne binmemesi için ekstra boşluk
               const SizedBox(height: 80),
             ],
           ),
@@ -70,7 +91,6 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  // 1. Bileşen: Günlük Eğitici İçerik (Örn: Paraben nedir?)[cite: 1]
   Widget _buildEducationalCard(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -104,7 +124,7 @@ class HomeScreen extends StatelessWidget {
                 const SizedBox(height: 5),
                 Text(
                   'Paraben nedir ve cilde etkileri nelerdir?',
-                  style: Theme.of(context).textTheme.displayLarge?.copyWith(fontSize: 16),
+                  style: Theme.of(context).textTheme.displayLarge?.copyWith(fontSize: 16, color: AppTheme.primaryNavy),
                 ),
               ],
             ),
@@ -114,9 +134,7 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  // 2. Bileşen: Son Analizler Kısa Listesi (Son 3 Ürün)[cite: 1]
   Widget _buildRecentScansList() {
-    // Şimdilik UI görmek için 3 adet sahte (mock) veri oluşturuyoruz
     final List<Map<String, dynamic>> recentScans = [
       {"name": "Nemlendirici Yüz Kremi", "score": 85, "risk": "Düşük"},
       {"name": "Güneş Kremi 50+ SPF", "score": 40, "risk": "Yüksek"},
@@ -124,8 +142,8 @@ class HomeScreen extends StatelessWidget {
     ];
 
     return ListView.builder(
-      shrinkWrap: true, // Scroll içinde Scroll hatasını önler
-      physics: const NeverScrollableScrollPhysics(), // Kaydırmayı ana SingleChildScrollView'a bırakır
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
       itemCount: recentScans.length,
       itemBuilder: (context, index) {
         final item = recentScans[index];
@@ -136,11 +154,12 @@ class HomeScreen extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.grey.withOpacity(0.2)),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.03),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
+                color: Colors.black.withOpacity(0.02),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
               ),
             ],
           ),
@@ -148,8 +167,8 @@ class HomeScreen extends StatelessWidget {
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             leading: CircleAvatar(
               backgroundColor: isHighRisk
-                  ? AppTheme.warningOrange.withOpacity(0.2)
-                  : AppTheme.secondaryGreen.withOpacity(0.2),
+                  ? AppTheme.warningOrange.withOpacity(0.15)
+                  : AppTheme.secondaryGreen.withOpacity(0.15),
               child: Icon(
                 isHighRisk ? Icons.warning_amber_rounded : Icons.check_circle_outline,
                 color: isHighRisk ? AppTheme.warningOrange : AppTheme.secondaryGreen,
@@ -162,7 +181,22 @@ class HomeScreen extends StatelessWidget {
             subtitle: Text('Skor: ${item["score"]}/100'),
             trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
             onTap: () {
-              // TODO: Ürün detay ekranına yönlendirme
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ResultScreen(
+                    productName: item["name"],
+                    score: item["score"],
+                    riskLevel: item["risk"],
+                    // Aşağıdaki veriler şimdilik test amaçlıdır, backend'den gelecek
+                    safeIngredients: const ['Gül Suyu', 'Aloe Vera Özü', 'Gliserin'],
+                    riskyIngredients: isHighRisk ? const ['Paraben', 'Suni Parfüm'] : const [],
+                    alternativeSuggestion: isHighRisk
+                        ? 'Bu ürün yerine evde 1 çay bardağı doğal gül suyu ve 2 damla çay ağacı yağını karıştırarak kendi toniğinizi yapabilirsiniz.'
+                        : null,
+                  ),
+                ),
+              );
             },
           ),
         );
